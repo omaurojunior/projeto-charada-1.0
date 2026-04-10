@@ -245,7 +245,7 @@ async function buscaCharadaAleatoria() {
     }
 
     respondendo = true;
-    campoPergunta.textContent = "Sincronizando com a base de dados...";
+    campoPergunta.textContent = "Sorteando charada...";
     inputResposta.value = "";
     inputResposta.disabled = true;
     btnValidar.disabled = true;
@@ -257,17 +257,25 @@ async function buscaCharadaAleatoria() {
     gameContainer.classList.remove('shake');
 
     try {
-        const respostaApi = await fetch(API_URL);
-        const dados = await respostaApi.json();
+        if (charadasRestantes.length === 0) {
+            campoPergunta.textContent = "Sincronizando com a base de dados...";
+            const respostaApi = await fetch(API_URL_TODAS);
+            const dados = await respostaApi.json();
+            charadasRestantes = dados.sort(() => Math.random() - 0.5);
+        }
         
-        charadaAtual = dados;
-        campoPergunta.textContent = charadaAtual.pergunta;
-        
-        if (tempoRestante > 0 || modoJogo !== 'tempo') {
-            inputResposta.disabled = false;
-            btnValidar.disabled = false;
-            btnNova.disabled = false;
-            inputResposta.focus();
+        if (charadasRestantes.length > 0) {
+            charadaAtual = charadasRestantes.pop();
+            campoPergunta.textContent = charadaAtual.pergunta;
+            
+            if (tempoRestante > 0 || modoJogo !== 'tempo') {
+                inputResposta.disabled = false;
+                btnValidar.disabled = false;
+                btnNova.disabled = false;
+                inputResposta.focus();
+            }
+        } else {
+            campoPergunta.textContent = "Nenhuma charada encontrada.";
         }
         respondendo = false;
         
@@ -538,6 +546,13 @@ document.body.addEventListener('click', () => {
 }, { once: true });
 
 // Começar jogo no DOM ready -> Mostra Tela Inicial
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const res = await fetch(API_URL_TODAS);
+        const dados = await res.json();
+        charadasRestantes = dados.sort(() => Math.random() - 0.5);
+    } catch(e) {
+        console.error("Erro ao pré-carregar charadas:", e);
+    }
     inicializarJogo();
 });
