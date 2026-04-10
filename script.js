@@ -77,8 +77,9 @@ function playSound(type) {
 
 // Constant config
 const TOTAL_RODADAS = 10;
-const API_URL = 'https://api-charadas-backend-rho.vercel.app/charadas/aleatoria';
+const API_URL_TODAS = 'https://api-charadas-backend-rho.vercel.app/charadas';
 
+let charadasRestantes = [];
 let charadaAtual = null;
 let username = "";
 let userAvatar = "👾"; // Default
