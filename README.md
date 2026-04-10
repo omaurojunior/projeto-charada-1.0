@@ -62,3 +62,6 @@ Distribuído sob a licença **ISC**. Consulte o arquivo de licença respectivo p
 
 ---
 > Desenvolvido para entregar a melhor experiência de UI/UX em desafios rápidos de texto.
+
+TESTE MEU SITE NA VERCEL
+https://projeto-charada-1-0.vercel.app/
