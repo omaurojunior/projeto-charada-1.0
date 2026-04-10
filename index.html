@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Charadas Arcade</title>
+    <style>
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .glass-panel {
+            background: rgba(10, 15, 25, 0.85); /* Darker for retro feel */
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+        }
+        
+        /* CRT Effect */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.05), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.05));
+            z-index: 50;
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+        }
+        @keyframes flicker {
+            0% { opacity: 0.95; }
+            5% { opacity: 0.85; }
+            10% { opacity: 0.95; }
+            15% { opacity: 1; }
+            100% { opacity: 1; }
+        }
+        .crt {
+            animation: flicker 0.15s infinite;
+        }
+        
+        /* Reto Text Glow & Animations */
+        .neon-text {
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #0ff, 0 0 40px #0ff;
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 20px #f0f, 0 0 40px #f0f;
+        }
+        
+        @keyframes scanline {
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
+        }
+        .scanline-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 12px;
+            background: rgba(0, 255, 204, 0.4);
+            opacity: 0.4;
+            animation: scanline 7s linear infinite;
+            pointer-events: none;
+            z-index: 51;
+            box-shadow: 0 0 20px rgba(0, 255, 204, 1);
+        }
+
+        /* Particles */
+        .particle {
+            position: absolute;
+            background: #0ff;
+            border-radius: 50%;
+            opacity: 0.6;
+            pointer-events: none;
+            box-shadow: 0 0 10px #0ff;
+            animation: float-up linear infinite;
+        }
+        @keyframes float-up {
+            0% { transform: translateY(100vh) scale(0); opacity: 0; }
+            10% { opacity: 1; scale: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateY(-100px) scale(0); opacity: 0; }
+        }
+        
+        /* Avatar Selector */
+        .avatar-option {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            filter: grayscale(100%) opacity(0.5);
+            cursor: pointer;
+        }
+        .avatar-option.selected {
+            filter: grayscale(0%) opacity(1);
+            transform: scale(1.15) translateY(-5px);
+            border-color: #0ff;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.5);
+            background: rgba(0, 255, 204, 0.1);
+        }
+
+        .mode-option.selected {
+            border-color: #0ff;
+            background: rgba(0, 255, 204, 0.1);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
+            transform: scale(1.05);
+        }
+
+        @keyframes shake {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+        .shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        .combo-pop {
+            animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        @keyframes pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
+        .delete-btn {
+            opacity: 0;
+            transition: all 0.2s;
+        }
+        .ranking-item:hover .delete-btn {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="crt bg-slate-950 bg-[linear-gradient(to_bottom,var(--tw-gradient-stops))] from-blue-950 via-slate-950 to-black flex items-center justify-center min-h-screen p-4 text-slate-100 overflow-x-hidden selection:bg-[#0ff]/30 selection:text-[#0ff]">
+
+    <!-- Elements for Retro Effect -->
+    <div class="scanline-bar"></div>
+    <div id="particles-container" class="fixed inset-0 overflow-hidden pointer-events-none z-0"></div>
+
+    <!-- Tela de Início (Start Screen) -->
+    <div id="start-screen" class="w-full max-w-xl glass-panel border border-[#0ff]/30 rounded-xl shadow-[0_0_30px_rgba(0,255,204,0.15)] p-8 sm:p-12 flex flex-col items-center relative z-10 transition-all duration-700">
+        <h1 class="text-4xl md:text-5xl font-bold uppercase tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-white to-[#0ff] mb-1 text-center neon-text">Charadas</h1>
+        <h2 class="text-xl md:text-2xl font-bold uppercase tracking-[0.3em] text-[#f0f] mb-10 text-center neon-text-pink drop-shadow-[0_0_10px_rgba(255,0,255,0.8)]">Arcade</h2>
+        
+        <p class="text-slate-300 text-xs sm:text-sm uppercase tracking-[0.2em] mb-4 font-bold border-b border-[#0ff]/30 pb-2 w-full text-center">Selecionar Avatar</p>
+        <div id="avatar-selector" class="flex flex-wrap justify-center gap-3 sm:gap-4 mb-8">
+            <div class="avatar-option bg-slate-900 border border-transparent w-14 h-14 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center text-2xl sm:text-3xl selected" data-avatar="👾">👾</div>
+            <div class="avatar-option bg-slate-900 border border-transparent w-14 h-14 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center text-2xl sm:text-3xl" data-avatar="🤖">🤖</div>
+            <div class="avatar-option bg-slate-900 border border-transparent w-14 h-14 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center text-2xl sm:text-3xl" data-avatar="🦊">🦊</div>
+            <div class="avatar-option bg-slate-900 border border-transparent w-14 h-14 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center text-2xl sm:text-3xl" data-avatar="💀">💀</div>
+            <div class="avatar-option bg-slate-900 border border-transparent w-14 h-14 sm:w-16 sm:h-16 rounded-lg flex items-center justify-center text-2xl sm:text-3xl" data-avatar="👽">👽</div>
+        </div>
+
+        <div class="w-full relative group mb-8 mt-2">
+            <input 
+                type="text" 
+                id="input-player-name" 
+                class="w-full bg-slate-950 border-2 border-slate-700/50 focus:border-[#0ff] focus:ring-4 focus:ring-[#0ff]/20 outline-none rounded-lg py-4 px-6 text-center text-lg sm:text-xl transition-all font-bold text-white placeholder-slate-600 uppercase"
+                placeholder="NOME DO JOGADOR"
+                autocomplete="off"
+                maxlength="15"
+            >
+            <div class="absolute w-2 h-full bg-[#0ff] top-0 -left-1 opacity-0 group-focus-within:opacity-100 transition-opacity rounded-l-sm drop-shadow-[0_0_5px_#0ff]"></div>
+            <div class="absolute w-2 h-full bg-[#0ff] top-0 -right-1 opacity-0 group-focus-within:opacity-100 transition-opacity rounded-r-sm drop-shadow-[0_0_5px_#0ff]"></div>
+        </div>
+
+        <p class="text-slate-300 text-xs sm:text-sm uppercase tracking-[0.2em] mb-4 font-bold border-b border-[#0ff]/30 pb-2 w-full text-center">Modo de Jogo</p>
+        <div id="mode-selector" class="w-full flex justify-between gap-2 mb-8">
+            <button class="mode-option flex-1 bg-slate-900 border border-slate-700 hover:border-[#0ff] text-slate-300 rounded-lg py-3 px-1 text-[10px] sm:text-xs font-bold uppercase transition-all selected" data-mode="classico" title="10 Rodadas normais.">🎯 Clássico</button>
+            <button class="mode-option flex-1 bg-slate-900 border border-slate-700 hover:border-[#0ff] text-slate-300 rounded-lg py-3 px-1 text-[10px] sm:text-xs font-bold uppercase transition-all" data-mode="morte_subita" title="Errou uma, o jogo acaba!">💀 Morte Súbita</button>
+            <button class="mode-option flex-1 bg-slate-900 border border-slate-700 hover:border-[#0ff] text-slate-300 rounded-lg py-3 px-1 text-[10px] sm:text-xs font-bold uppercase transition-all" data-mode="tempo" title="60 segundos para acertar o máximo.">⏱️ Corrida 60s</button>
+        </div>
+
+        <button id="btn-start-game" class="relative group overflow-hidden w-full bg-slate-950 border-2 border-[#0ff] text-[#0ff] hover:text-slate-950 font-bold tracking-[0.2em] text-xl py-4 px-8 rounded-lg transition-all active:scale-95 hover:shadow-[0_0_20px_rgba(0,255,204,0.6)]">
+            <span class="absolute inset-0 bg-[#0ff] w-full h-full -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out z-0"></span>
+            <span class="relative z-10 flex items-center justify-center gap-3">
+                <span class="animate-pulse">▶</span> INSERT COIN
+            </span>
+        </button>
+    </div>
+
+    <!-- Container do Jogo -->
+    <div id="game-container" class="hidden absolute w-full max-w-xl glass-panel rounded-xl shadow-[0_0_40px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col transition-all duration-700 opacity-0 scale-95 z-20">
+        <!-- Header & Progress -->
+        <div class="px-6 py-5 border-b border-white/10 flex justify-between items-center bg-white/5">
+            <div class="flex flex-col">
+                <h1 class="text-xl font-bold tracking-wider text-emerald-400 uppercase">Charadas</h1>
+                <span id="combo-display" class="text-[10px] font-bold text-[#f0f] tracking-widest opacity-0 transition-all duration-300 mt-1">🔥 COMBO x1</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="tempo-display" class="hidden font-mono font-bold text-rose-400 bg-rose-400/10 px-3 py-1 rounded-full text-sm">⏱ 60s</span>
+                <span id="pontos-display" class="font-semibold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full text-sm transition-transform duration-300">⭐ 0 pts</span>
+                <span id="rodada-display" class="px-3 py-1 bg-slate-800 border border-slate-700 rounded-full text-xs font-bold tracking-widest text-slate-300">1 / 10</span>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="w-full h-1.5 bg-slate-800/80">
+            <div id="progress-bar" class="h-full bg-emerald-500 transition-all duration-[400ms] ease-out shadow-[0_0_10px_rgba(16,185,129,0.5)]" style="width: 10%;"></div>
+        </div>
+        
+        <!-- Content -->
+        <div class="p-8 sm:p-10 flex flex-col items-center">
+            <p id="pergunta" class="text-2xl md:text-3xl font-semibold text-center mb-10 leading-tight min-h-[120px] flex items-center">Carregando o sistema de jogo...</p>
+            
+            <div class="w-full relative group">
+                <input 
+                    type="text" 
+                    id="input-resposta" 
+                    class="w-full bg-slate-900/80 border border-slate-700 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none rounded-2xl py-5 px-6 text-center text-xl transition-all shadow-inner font-medium text-white placeholder-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="Sua resposta..."
+                    autocomplete="off"
+                >
+            </div>
+            
+            <div id="status-container" class="h-10 mt-4 mb-2 flex items-center justify-center w-full">
+                <p id="status-mensagem" class="text-sm font-bold tracking-wide opacity-0 transition-opacity duration-300 uppercase"></p>
+            </div>
+
+            <button id="btn-validar" class="w-full mt-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-lg py-4 px-8 rounded-2xl transition-transform active:scale-[0.98] shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:active:scale-100">
+                Confirmar Resposta
+            </button>
+            
+            <button id="btn-nova" class="mt-6 text-slate-500 hover:text-slate-300 font-medium transition-colors text-xs uppercase tracking-widest disabled:opacity-50">
+                Pular esta rodada (-5 pts)
+            </button>
+        </div>
+    </div>
+
+    <!-- Tela Fim de Jogo (Oculta) -->
+    <div id="end-container" class="w-full max-w-xl glass-panel rounded-3xl shadow-2xl overflow-hidden flex flex-col hidden opacity-0 scale-95 transition-all duration-500">
+        <div class="p-8 sm:p-10 flex flex-col items-center">
+            <h2 class="text-3xl md:text-4xl font-bold text-white mb-3">🔥 Missão Cumprida!</h2>
+            <p class="text-slate-400 mb-8 text-center">Fim das 10 rodadas. Veja onde você se classifica.</p>
+            
+            <!-- Cards de Resultado -->
+            <div class="grid grid-cols-2 gap-4 w-full mb-8">
+                <div class="bg-slate-900/60 rounded-3xl p-6 text-center border border-slate-800 shadow-inner">
+                    <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-3">Sua Pontuação</p>
+                    <p id="end-pontos" class="text-4xl md:text-5xl font-bold text-amber-400 drop-shadow-md">0</p>
+                </div>
+                <div class="bg-slate-900/60 rounded-3xl p-6 text-center border border-slate-800 shadow-inner">
+                    <p class="text-slate-500 text-xs font-bold uppercase tracking-widest mb-3">Sua Precisão</p>
+                    <p id="end-porcentagem" class="text-4xl md:text-5xl font-bold text-emerald-400 drop-shadow-md">0%</p>
+                </div>
+            </div>
+
+            <!-- Tabela de Ranking -->
+            <div class="w-full bg-slate-900/80 rounded-3xl p-6 border border-slate-800 mb-8 max-h-64 overflow-y-auto custom-scrollbar">
+                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2 border-b border-slate-800 pb-3">
+                    🏆 Ranking Local (Top 10)
+                </h3>
+                <div class="space-y-1">
+                    <div id="ranking-list" class="flex flex-col gap-1">
+                        <!-- Itens do Ranking via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-restart" class="w-full bg-white hover:bg-slate-200 text-slate-950 font-bold text-lg py-4 px-8 rounded-2xl transition-transform active:scale-[0.98] shadow-lg">
+                Começar Nova Partida
+            </button>
+        </div>
+    </div>
+
+<script src="script.js"></script>
+</body>
+</html>
